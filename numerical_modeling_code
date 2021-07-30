@@ -1,0 +1,272 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import signal
+from matplotlib import cm
+#plt.rc('text', usetex=False)
+from tqdm import tqdm
+
+
+def elastic_modeling_conv_cpu(Mu,Lambda,Rho,dz,dx,Ts,spz,spx,gz,gx,source,dt,fq,Vmax,Ts_field):
+ L=np.round(0.5*(Vmax/(fq*dx)));
+ (Nz,Nx)=Rho.shape
+ ans1= Rho[:,0]; ans2=np.ones(int(L)); ans1.shape=(len(ans1),1); ans2.shape=(1,len(ans2)); #Variables
+ Rho=np.concatenate((ans1*ans2,Rho,ans1*ans2), axis=1)
+ ans1= Mu[:,0]; ans2=np.ones(int(L)); ans1.shape=(len(ans1),1); ans2.shape=(1,len(ans2)); #Variables
+ Mu=np.concatenate((ans1*ans2,Mu,ans1*ans2), axis=1)
+ ans1= Lambda[:,0]; ans2=np.ones(int(L)); ans1.shape=(len(ans1),1); ans2.shape=(1,len(ans2)); #Variables
+ Lambda=np.concatenate((ans1*ans2,Lambda,ans1*ans2), axis=1)
+ Rho=np.concatenate((Rho,np.matmul(np.ones((np.int(L),1)),np.delete(Rho, np.arange(0,Rho.shape[0]-1), axis=0))), axis=0)
+ Mu=np.concatenate((Mu,np.matmul(np.ones((np.int(L),1)),np.delete(Mu, np.arange(0,Mu.shape[0]-1), axis=0))), axis=0)
+ Lambda=np.concatenate((Lambda,np.matmul(np.ones((np.int(L),1)),np.delete(Lambda, np.arange(0,Lambda.shape[0]-1), axis=0))), axis=0)
+    
+#%%
+ top=np.zeros((Rho.shape[1],1))
+ for i in np.arange(Rho.shape[1]):
+    top[i]=np.amax((np.where(Rho[:, i]==0)))#OJO CON EL 0
+
+#%%
+ Dz1=np.array([[0], [-1/24],[9/8], [-9/8], [1/24]])
+ Dx1=Dz1.T
+ Dz2=np.array([[-1/24], [9/8], [-9/8], [1/24], [0]])
+ Dx2=Dz2.T
+    
+    
+    
+ dzx=np.zeros((Rho.shape[0],1))
+ dzz=np.zeros((1,Rho.shape[1]))
+
+#Rho[:,1:] todas las filas desde la segunda columna, Rho[1:,:] todas las columnas desde la segunda fila
+#Rho[:,Rho.shape[1]-1]#Todas las fila de la ultima columna
+#Bx=2/(Rho+np.concatenate((np.delete(Rho, 0, axis=1),np.delete(Rho, np.arange(0,Rho.shape[1]-1), axis=1)), axis=1))
+
+#TODO: 
+ Bx=2/(Rho+np.concatenate((Rho[:,1:], Rho[:,-1].reshape(Rho.shape[0],1)),axis=1))
+ Bz=2/(Rho+np.concatenate((Rho[1:,:],Rho[-1,:].reshape(1,Rho.shape[1])),axis=0))
+ Muxz=1/((1/4)*(1/Mu+1/np.concatenate((Mu[:,1:],Mu[:,-1].reshape(Mu.shape[0],1)),axis=1)+1/np.concatenate((Mu[1:,:],Mu[-1,:].reshape(1,Mu.shape[1])),axis=0)
+                +1/np.concatenate((np.concatenate((Mu[1:,1:],Mu[0:-1,-1].reshape(Mu.shape[0]-1,1)),axis=1),Mu[-1,:].reshape(1,Mu.shape[1])),axis=0)))
+ a=Bx==float('inf')
+ b=Bz==float('inf')
+ c=Muxz==float('inf')
+ for i in np.arange(Bx.shape[0]):
+    for j in np.arange(Bx.shape[1]):
+        if a[i][j]==True:
+            Bx[i][j]=0
+        if b[i][j]==True:
+            Bz[i][j]=0
+        if c[i][j]==True:
+            Muxz[i][j]=0
+                
+ print('\n')
+ vx=np.zeros(Rho.shape)
+ vz=np.zeros(Rho.shape)
+ sxx=np.zeros(Rho.shape)
+ szz=np.zeros(Rho.shape)
+ sxz=np.zeros(Rho.shape)
+    
+    
+ spx=spx/dx+L; spz=spz/dz 
+ gz=gz/dz; gx=gx/dx       
+ ind_x=gx+L            
+    
+    
+ skip=round(Ts_field/dt)
+ skip_Ts=round(Ts/dt);
+ k=0; n=0
+ field_vx=np.zeros([Nz,Nx,np.int(np.floor(np.size(source)/skip))])
+ field_vz=np.zeros([Nz,Nx,np.int(np.floor(np.size(source)/skip))])
+ field_sxx=np.zeros([Nz,Nx,np.int(np.floor(np.size(source)/skip))])
+ field_szz=np.zeros([Nz,Nx,np.int(np.floor(np.size(source)/skip))])
+ field_sxz=np.zeros([Nz,Nx,np.int(np.floor(np.size(source)/skip))])
+ gather_x=np.zeros([np.int(np.floor(np.size(source)/skip_Ts)),np.size(gx)])
+ gather_z=np.zeros([np.int(np.floor(np.size(source)/skip_Ts)),np.size(gx)])
+    
+    
+    
+ R=1e-4
+ d0=-(3*Vmax/(2*L))*np.log(R)
+ (Nz,Nx)=Rho.shape
+ (X,Z)=np.meshgrid(np.arange(1,Nx+1),np.arange(1,Nz+1))
+ PMLzone_=(X<=L)+(X>=Nx-L-1)+(Z>=Nz-L-1)*(X>L)*(X<Nx-L-1)
+ PMLzone=np.zeros((PMLzone_.shape[0],PMLzone_.shape[1]))
+ for i in np.arange(PMLzone.shape[0]):
+    for j in np.arange(PMLzone.shape[1]):
+        if PMLzone_[i][j]==True:
+            PMLzone[i][j]=1.0   
+ ux=(X<=L)*(L-X)+(X>=Nx-L-1)*(X-(Nx-L-1))
+ uz=((Z>=Nz-L-1)*(Z-(Nz-L-1)))
+ Dx=d0*(ux/L)*(ux/L);
+ Dz=d0*(uz/L)*(uz/L);
+ cx=np.exp(-Dx*dt);
+ cz=np.exp(-Dz*dt);
+ omega_xx=np.zeros(Rho.shape);
+ omega_zz=np.zeros(Rho.shape);
+ omega_xz=np.zeros(Rho.shape);
+ omega_zx=np.zeros(Rho.shape);
+ Psi_xx=np.zeros(Rho.shape);
+ Psi_zz=np.zeros(Rho.shape);
+ Psi_xz=np.zeros(Rho.shape);
+ Psi_zx=np.zeros(Rho.shape);
+ 
+ 
+ for it in tqdm(np.arange(len(source))):#len(source)
+    omega_xx=(cx*omega_xx+((1-cx)/dx)*signal.convolve2d(sxx,Dx2, mode='same'))
+    omega_xz=(cz*omega_xz+((1-cz)/dz)*signal.convolve2d(sxz,Dz1, mode='same'))
+    omega_zx=(cx*omega_zx+((1-cx)/dx)*signal.convolve2d(sxz,Dx1, mode='same'))
+    omega_zz=(cz*omega_zz+((1-cz)/dz)*signal.convolve2d(szz,Dz2, mode='same'))
+    Psi_xx=(cx*Psi_xx+((1-cx)/dx)*signal.convolve2d(vx,Dx1, mode='same'))
+    Psi_xz=(cz*Psi_xz+((1-cz)/dz)*signal.convolve2d(vx,Dz2, mode='same'))
+    Psi_zx=(cx*Psi_zx+((1-cx)/dx)*signal.convolve2d(vz,Dx2, mode='same'))
+    Psi_zz=(cz*Psi_zz+((1-cz)/dz)*signal.convolve2d(vz,Dz1, mode='same'))
+    sxx+=(dt/dx)*(np.multiply(Lambda+2*Mu, signal.convolve2d(vx,Dx1, mode='same'))+np.multiply(Lambda,signal.convolve2d(vz,Dz1, mode='same')))-dt*PMLzone*((Lambda+2*Mu)*Psi_xx+Lambda*Psi_zz)
+    szz+=(dt/dx)*(np.multiply(Lambda+2*Mu, signal.convolve2d(vz,Dz1, mode='same'))+np.multiply(Lambda,signal.convolve2d(vx,Dx1, mode='same')))-dt*PMLzone*(Lambda*Psi_xx+(Lambda+2*Mu)*Psi_zz)
+    sxz+=(dt/dx)*np.multiply(Muxz, signal.convolve2d(vx,Dz2, mode='same')+signal.convolve2d(vz,Dx2, mode='same'))-dt*PMLzone*Muxz*(Psi_xz+Psi_zx)
+        
+
+
+    sxx[np.int(spz+top[np.int(spx)])+1,np.int(spx)]+=source[it]
+    szz[np.int(spz+top[np.int(spx)])+1,np.int(spx)]+=source[it]
+    vx+=(dt/dx)*np.multiply(Bx, signal.convolve2d(sxx,Dx2, mode='same')+signal.convolve2d(sxz,Dz1, mode='same'))-dt*PMLzone*Bx*(omega_xx+omega_xz)
+    vz+=(dt/dx)*np.multiply(Bz, signal.convolve2d(sxz,Dx1, mode='same')+signal.convolve2d(szz,Dz2, mode='same'))-dt*PMLzone*Bz*(omega_zz+omega_zx)
+    
+        
+#[np.int(spz+top[np.int(spx)])+1][np.int(spx)]        
+        
+    if (it+1) % skip == 0: #and it != 0:
+        Vx=0.5*vx+np.concatenate((dzx,vx[:,0:-1]),axis=1)
+        Vz=0.5*vz+np.concatenate((dzz,vz[0:-1,:]),axis=0)
+      #      Vx=vx
+      #      Vz=vz
+       #     Sxz=sxz
+        Sxx=sxx
+        Szz=szz
+        Sxz=0.25*sxz+np.concatenate((dzz,sxz[0:-1,:]),axis=0)+np.concatenate((dzx,sxz[:,0:-1]),axis=1)+np.concatenate((dzz,np.concatenate((dzx[0:-1,0].reshape(dzx.shape[0]-1,1),sxz[0:-1,0:-1]),axis=1)),axis=0)
+        field_vx[:,:,k]=Vx[0:-np.int(L),np.int(L):-np.int(L)]
+        field_vz[:,:,k]=Vz[0:-np.int(L),np.int(L):-np.int(L)]
+        field_sxx[:,:,k]=Sxx[0:-np.int(L),np.int(L):-np.int(L)]
+        field_szz[:,:,k]=Szz[0:-np.int(L),np.int(L):-np.int(L)]
+        field_sxz[:,:,k]=Sxz[0:-np.int(L),np.int(L):-np.int(L)]
+        k=k+1
+            
+          
+    if (it+1) % skip_Ts == 0: #and it != 0:
+     #       Vx=vx
+     #       Vz=vz
+        Vx=0.5*vx+np.concatenate((dzx,vx[:,0:-1]),axis=1)
+        Vz=0.5*vz+np.concatenate((dzz,vz[0:-1,:]),axis=0)
+        for i in np.arange(len(ind_x)):
+            gather_x[n,i]=Vx[np.int(gz+top[np.int(ind_x[i])])+1,np.int(ind_x[i])]
+            gather_z[n,i]=Vz[np.int(gz+top[np.int(ind_x[i])])+1,np.int(ind_x[i])]
+        n=n+1  
+   
+ return(gather_z,gather_x,field_vz,field_vx,field_szz,field_sxx,field_sxz)
+    #return(field_vz,field_vx,field_szz,field_sxx,field_sxz)
+
+
+#%% CARGAR DATOS
+
+Vp=np.load('model_vp.npy')
+Vs=np.load('model_vs.npy')
+Rho=np.load('model_rho.npy')
+
+(Nz,Nx)=Vp.shape
+dh=1                     #Space sampling
+dx=dh; dz=dh             #Horizontal and vertical step
+x=np.arange(0,dh*Nx,dh)   #Horizontal axis
+z=np.arange(0,dh*Nz,dh)   #Vertical axis
+
+#%% TOPOGRAFÍA
+
+top=np.zeros([Rho.shape[1],1])
+for i in np.arange(Rho.shape[1]):
+    id_top=np.array([np.where(Rho[:,i]==0)])
+    if id_top.size>0:
+        id_top=np.max(id_top)
+        top[i]=id_top*dz
+
+#%% PARÁMETROS DE MODELADO
+
+spx=150; spz=60                   #Source position
+gz=0; gx=np.arange(0,1000,5)     #Receivers position
+Ts=2e-4                            #Time sampling
+#dt=0.99/(Vmax*1.167*math.sqrt(1/(dh^2)+1/(dh^2)));
+dt=1e-4 
+tf=1
+Ts_field=0.05
+
+#%% FUENTE WAVELET
+fq=30                         #Central frequency
+t=np.arange(0,tf+dt,dt)          #Time axis
+t0=1/fq                      #Delay source
+source=(1-2*(np.pi*fq*(t-t0))*(np.pi*fq*(t-t0)))*np.exp(-(np.pi*fq*(t-t0))*(np.pi*fq*(t-t0)))  #Source wavelet
+     
+    
+#%%PARÁMETROS DE ELASTICIDAD        
+    
+Mu=(Vs*Vs)*Rho
+Lambda=(Vp*Vp)*(Rho)-2*Mu
+Vmax=np.max(Vp)
+
+#%%LLAMAR A LA FUNCION
+(gather_z,gather_x,field_vz,field_vx,field_szz,field_sxx,field_sxz)=elastic_modeling_conv_cpu(Mu,Lambda,Rho,dz,dx,Ts,spz,spx,gz,gx,source,dt,fq,Vmax,Ts_field)
+
+#%% FIGURES
+plt.figure(1)
+plt.ion()
+for j in np.arange(0,5):
+    plt.imshow(field_vz[:,:,j], extent=[x[0],x[Nx-1],z[Nz-1],z[0]],cmap=cm.jet)
+   # plt.axhline(y=50, color="black", linestyle="-")#Línea topografía
+    plt.axhline(y=250, color="black", linestyle="--")
+  #  plt.plot(x,65+IGS ,color='darkred',linestyle='--')
+    plt.plot(spx,spz, marker='*', color='black')
+   # plt.plot(360,65, marker='.',linestyle="--", color='black')
+   # plt.plot(720,65, marker='.', color='black')
+    plt.xlabel(r'Distance (m)')
+    plt.ylabel(r'Depth (m)')
+    plt.title(r'Time 1 (s)')
+    plt.draw()
+    plt.pause(0.4)
+
+plt.ioff()
+plt.show()
+
+
+
+plt.figure(2)
+plt.subplot(121)
+plt.imshow(gather_x[:,:],vmin=-1e-9,vmax=1e-9, extent=[gx[0],gx[gx.shape[0]-1],1000*t[t.shape[0]-1],t[0]],cmap=cm.gray)
+plt.axis([gx[0],gx[gx.shape[0]-1],1000*t[t.shape[0]-1],t[0]])
+plt.title('Horizontal shot gather')
+plt.ylabel(r'Time (ms)')
+plt.xlabel(r'Distance (m)')
+plt.colorbar(orientation='horizontal')
+
+plt.subplot(122)
+plt.imshow(gather_z[:,:],vmin=-1e-9,vmax=1e-9,extent=[gx[0],gx[gx.shape[0]-1],1000*t[t.shape[0]-1],t[0]], cmap=cm.gray)
+plt.axis([gx[0],gx[gx.shape[0]-1],1000*t[t.shape[0]-1],t[0]])
+plt.title('Vertical shot gather')
+plt.ylabel(r'Time (ms)')
+plt.xlabel(r'Distance (m)')
+plt.colorbar(orientation='horizontal')
+
+#plt.text(3, 11, u'Vacío', fontsize = 10, horizontalalignment='center', verticalalignment='center',bbox ={'facecolor':'white','pad':5}) Texto en imagenes
+#plt.savefig('PRUEBA2.png', bbox_inches='tight', dpi = 1000)
+plt.show()
+
+'''grafica de una seccion
+plt.imshow(prueba,extent=[0,14,0,14],cmap='binary')
+plt.ylabel(r'Profundidad [m]')
+plt.xlabel(r'Distancia [m]')
+x_ticks=np.arange(0, 14, 1)
+plt.xticks(x_ticks)
+plt.yticks(x_ticks)
+plt.title(r'Modelo de Densidad [Kg/m^3]')
+plt.grid(which="major",color='0.65',linestyle='dotted')
+plt.text(3, 12, u'Vacío', fontsize = 10, horizontalalignment='center', verticalalignment='center',bbox ={'facecolor':'white','pad':5})
+plt.text(11, 3, u'Tierra', fontsize = 10, horizontalalignment='center', verticalalignment='center',bbox ={'facecolor':'white','pad':5})
+plt.text(3, 7, u'Capa ficticia', fontsize = 10, horizontalalignment='center', verticalalignment='center',bbox ={'facecolor':'white','pad':5})
+plt.grid(True)
+plt.show()
+'''
+
+#np.save('shot_gather_x',gather_x)  
+#np.save('shot_gather_z',gather_z)
