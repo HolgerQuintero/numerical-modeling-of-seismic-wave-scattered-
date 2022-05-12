@@ -1,5 +1,5 @@
 ---
-title: 'An Open-Source modeling of seismic waves dispersed by near-surface heterogeneities.'
+title: 'An Open-Source modeling of seismic waves scattered by near-surface heterogeneities.'
 tags:
   - Python
   - Geophysics
