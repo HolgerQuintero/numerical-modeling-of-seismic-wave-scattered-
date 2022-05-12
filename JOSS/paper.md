@@ -30,29 +30,26 @@ bibliography: paper.bib
 
 # Summary
 
-Near-surface heterogeneities affect seismic waves causing the wavefield to be scattered, this is evidenced in the seismic records and adds complexity in the signals because the reflections of the body waves are masked with a noise that can become up to 10 times greater than common seismic noise [@Stork:2015], making the task of attenuating it difficult. The modeling of surface waves in the presence of heterogeneities is essential to study the propagation of seismic waves in geophysics and engineering. Using the improved vacuum formulation for 2D finite-difference [@Zeng:2012] who incorporates surface topography to the wave propagation simulation (satisfying the free surface condition) it is possible to observe the scattered wavefield for different earth models with shallow random scattering bodies and irregular topography. In addition, this formulation manages to reduce the computational cost of numerical modeling since it requires fewer grid points per wavelength PPW than other methods and is easy to implement to the conventional vacuum formulation 2D finite-difference. Numerical modeling is presented as an open-source software developed in Python.
+Near-surface heterogeneities affect seismic waves causing the wavefield to be scattered, this is evidenced in the seismic records and adds complexity in the signals because the reflections of the body waves are masked with a noise that can become up to 10 times greater than common seismic noise [@Stork:2015], making the task of attenuating it difficult. The modeling of surface waves in the presence of heterogeneities is essential to study the propagation of seismic waves in geophysics and engineering. Using the improved vacuum formulation for 2D finite-difference [@Zeng:2012] who incorporates surface topography to the wave propagation simulation (satisfying the free surface condition) it is possible to observe the scattered wavefield for different earth models with shallow random scattering bodies and irregular topography. In addition, this formulation manages to reduce the computational cost of numerical modeling since it requires fewer grid points per wavelength PPW than other methods and is easy to implement to the conventional vacuum formulation 2D finite-difference. 
+
+The analysis of the results of seismic wave propagation over heterogeneous media helps to understand the scattering mechanisms and, therefore, could lead to the development of new data acquisition and processing techniques to reduce the scattering noise, improve the quality of seismic images and classify scattering. Numerical modeling is presented as an open-source software developed in Python.
 
 # Statement of need
 
-`Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
-enables wrapping low-level languages (e.g., C) for speed without losing
-flexibility or ease-of-use in the user-interface. The API for `Gala` was
-designed to provide a class-based and user-friendly interface to fast (C or
-Cython-optimized) implementations of common operations such as gravitational
-potential and force evaluation, orbit integration, dynamical transformations,
-and chaos indicators for nonlinear dynamics. `Gala` also relies heavily on and
-interfaces well with the implementations of physical units and astronomical
-coordinate systems in the `Astropy` package [@astropy] (`astropy.units` and
-`astropy.coordinates`).
+Descripcion del codigo(librerias y funciones tambien)
 
-`Gala` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in `Gala` will enable exciting
-scientific explorations of forthcoming data releases from the Gaia mission
-[@gaia] by students and experts alike.
+Paso a paso (parametros, cpml, promediado de parametros, campos y condiciones)
+
+
+# Examples
+
+Generacion e datos sinteticos y ejemplos.
+
+
+
+
+
+
 
 # Mathematics
 
