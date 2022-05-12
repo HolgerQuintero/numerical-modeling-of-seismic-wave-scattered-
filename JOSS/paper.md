@@ -30,6 +30,12 @@ bibliography: paper.bib
 
 # Summary
 
+Near-surface heterogeneities affect seismic waves causing the wavefield to be scattered, this is evidenced in the seismic records and adds complexity in the signals because the reflections of the body waves are masked with a noise that can become up to 10 times greater than common seismic noise [C. Stork and D Flentge, 2015], making the task of attenuating it difficult. The modeling of surface waves in the presence of heterogeneities is essential to study the propagation of seismic waves in geophysics and engineering. Using the improved vacuum formulation for 2D finite-difference [Zeng et al., 2011] who incorporates surface topography to the wave propagation simulation (satisfying the free surface condition) it is possible to observe the scattered wavefield as the difference between the total wavefield and the wavefield in the absence of the heterogeneities for different earth models with shallow random scattering bodies and irregular topography. In addition, this formulation manages to reduce the computational cost of numerical modeling since it requires fewer grid points per PPW wavelength than other methods and is easy to implement to the conventional vacuum formulation 2D finite-difference.
+
+Numerical modeling is presented as an open-source software developed in Python and is part of research work to detect scattering noise on multicomponent seismic data using machine learning. The modeling code can be found in the repository: https://github.com/HolgerQuintero/numerical-modeling-of-seismic-wave-scattered-. Analysis of the results helps to understand scattering mechanisms and could therefore lead to the development of new data acquisition and processing techniques to reduce scattering noise, improve the quality of seismic images, and classify the scattering.
+
+The modeling code was used on a portion of the SEAM phase II foothills model with alluvial sediments, complex geological structures, and rough topography based on the Llanos Foothills of the Andes Mountains in Colombia [Regone et al., 2017]. Figure 1 shows the portion of the velocity and density model, the propagation of the wavefield, and the shot gather obtained. 
+ 
 
 
 # Statement of need
