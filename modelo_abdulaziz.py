@@ -5,7 +5,7 @@ Created on Fri May 21 11:28:37 2021
 @author: USUARIO
 """
 
-## MODELO ARTICULO ABDULAZIZ
+## MODELO ARTICULO ABDULAZIZ - 
 ##Vmin=1000,f=30, then dh=1.
 
 import math as m
